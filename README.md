@@ -1,38 +1,41 @@
-# Finance Backend
+# Finance Backend - REST API for Personal Finance Tracking
 
-Backend API for a finance tracking application built with Node.js, Express, MongoDB, and JWT authentication.
+Finance Backend is a RESTful API service that handles user authentication, role-based access control, financial record management, and dashboard analytics for a personal finance tracking application.
 
-## Tech Stack
+Instead of treating finance entries as raw data rows, this project organizes income and expense records into role-gated, queryable summaries that serve both individual users and admin dashboards.
 
-- Node.js
-- Express
-- MongoDB with Mongoose
-- JWT for authentication
-- bcryptjs for password hashing
 
-## Features
+## Overview
 
-- User registration and login
-- Role-based access control (`viewer`, `analyst`, `admin`)
-- Record management for income and expense entries
-- Dashboard summary APIs for totals and category breakdowns
-- Soft delete support for records
+The API accepts standard HTTP requests, authenticates users with JWT, stores data in MongoDB using Mongoose, and exposes endpoints for record management and financial summaries.
 
-## Project Structure
+Core outcomes:
 
-```text
-finance-backend/
-|-- config/
-|-- controllers/
-|-- middleware/
-|-- models/
-|-- routes/
-|-- req.http
-|-- server.js
-`-- .env
-```
+- register and authenticate users securely
+- enforce role-based access to protected routes
+- create, update, and soft-delete financial records
+- aggregate income, expense, and balance summaries
+- break down spending by category
 
-## Architecture Diagram
+---
+
+---
+
+## Test Credentials
+
+Use these credentials to test the API without manual registration:
+
+| Role | Email | Password |
+| --- | --- | --- |
+| `admin` | admin@example.com | 123456 |
+| `analyst` | analyst@example.com | 123456 |
+| `viewer` | viewer@example.com | 123456 |
+
+> These users can be seeded into MongoDB using the registration endpoint or a seed script. The admin token unlocks all record and dashboard routes.
+
+---
+
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -69,50 +72,36 @@ flowchart LR
     C -. Bearer token .-> A
 ```
 
-Brief flow:
+---
+## Key Features
 
-- Client requests enter `server.js`, which mounts the route modules.
-- Public user routes go directly to `userController`.
-- Protected record and dashboard routes pass through `authMiddleware` first.
-- Role-based checks happen in `roleMiddleware` before hitting protected controllers.
-- Controllers use Mongoose models to read and write data in MongoDB.
-- Login returns a JWT token that clients send back in the `Authorization` header.
+- **JWT Authentication** – Users authenticate securely using email and password, receive a signed JWT token, and must include it as a Bearer token to access all protected API routes.
 
-## Environment Variables
+- **Role-Based Access Control** – Supports `viewer`, `analyst`, and `admin` roles with strict access enforcement using `authMiddleware` and `authorizeRoles(...)` to ensure each user only accesses permitted resources.
 
-Create a `.env` file with:
+- **Record Management** – Admin users can create income and expense records, update existing entries, and perform soft-deletes by setting `isDeleted=true` instead of permanently removing data.
 
-```env
-PORT=5000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-```
+- **Paginated Record Listing** – Provides flexible record retrieval with filtering by user, type, and category, along with pagination support and configurable page size for efficient data handling.
 
-## Installation
+- **Dashboard Summary** – Enables admins and analysts to retrieve aggregated financial insights including total income, total expenses, and net balance, with optional filtering by specific users.
 
-```bash
-npm install
-```
+- **Category Breakdown** – Offers detailed category-wise aggregation of financial data, allowing frontend applications to easily build charts and visualize spending patterns without extra processing.
 
-## Run The Server
+- **Soft Delete Support** – Ensures records are never permanently deleted by using an `isDeleted` flag, helping maintain audit trails, data recovery, and consistent historical tracking.
 
-Development:
+## Tech Stack
 
-```bash
-npm run dev
-```
+| Layer | Technology |
+| --- | --- |
+| Runtime | Node.js |
+| Framework | Express |
+| Database | MongoDB |
+| ODM | Mongoose |
+| Authentication | JWT (`jsonwebtoken`) |
+| Password Hashing | bcryptjs |
+| Dev Server | nodemon |
 
-Production:
-
-```bash
-npm start
-```
-
-Base URL:
-
-```text
-http://localhost:5000
-```
+---
 
 ## Authentication
 
@@ -125,7 +114,9 @@ http://localhost:5000
 
 - `viewer`: default user role when no role is provided at signup
 - `analyst`: can access dashboard summary endpoints
-- `admin`: can access dashboard endpoints and create/update/delete records
+- `admin`: can access dashboard endpoints and create, update, and delete records
+
+---
 
 ## API Routes
 
@@ -198,9 +189,85 @@ http://localhost:5000
 
 ---
 
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- npm
+- MongoDB instance (local or Atlas)
+
+### Quick Start
+
+```bash
+git clone <your-repo-url>
+cd finance-backend
+npm install
+```
+
+Create a `.env` file in the root directory, start MongoDB, then run the server:
+
+```bash
+npm run dev
+```
+
+- Backend: `http://localhost:5000`
+
+---
+
+## Environment Variables
+
+Create a `.env` file with:
+
+```env
+PORT=5000
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret
+```
+
+---
+
+## Run The Server
+
+Development:
+
+```bash
+npm run dev
+```
+
+Production:
+
+```bash
+npm start
+```
+
+Base URL:
+
+```text
+http://localhost:5000
+```
+
+---
+
+## Project Structure
+
+```text
+finance-backend/
+|-- config/
+|-- controllers/
+|-- middleware/
+|-- models/
+|-- routes/
+|-- req.http
+|-- server.js
+`-- .env
+```
+
+---
+
 ## Testing The API
 
-The repository already includes [`req.http`](/d:/finance-backend/req.http), which contains ready-to-run HTTP requests for:
+The repository includes [`req.http`](/finance-backend/req.http), which contains ready-to-run HTTP requests for:
 
 - user registration
 - login
@@ -208,12 +275,16 @@ The repository already includes [`req.http`](/d:/finance-backend/req.http), whic
 - dashboard summary endpoints
 - health check
 
+---
+
 ## Current Behavior Notes
 
 - `GET /api/users` is public.
-- `GET /api/records` is also public, while create/update/delete are admin-only.
+- `GET /api/records` is also public, while create, update, and delete are admin-only.
 - Dashboard aggregations do not currently filter out soft-deleted records.
 - Auth middleware logs the authorization header and auth errors to the console.
+
+---
 
 ## Scripts
 

@@ -2,18 +2,44 @@
 
 ### User Routes
 
-# Get all users
+# Get all users (requires admin auth)
 GET http://localhost:5000/api/users
+Authorization: Bearer {{jwt_token}}
 
 ###
 
-# Create a new user
+# Register as viewer (default - should succeed)
 POST http://localhost:5000/api/users
 Content-Type: application/json
 
 {
-  "name": "John Doe",
-  "email": "john@example.com",
+  "name": "Viewer User",
+  "email": "viewer@example.com",
+  "password": "password123"
+}
+
+###
+
+# Register as analyst (should succeed)
+POST http://localhost:5000/api/users
+Content-Type: application/json
+
+{
+  "name": "AAdmin User",
+  "email": "admiin@example.com",
+  "password": "password123",
+  "role": "admin"
+}
+
+###
+
+# Register as admin (SHOULD FAIL with 401 Unauthorized)
+POST http://localhost:5000/api/users
+Content-Type: application/json
+
+{
+  "name": "Admin User",
+  "email": "admin22@example.com",
   "password": "password123",
   "role": "admin"
 }

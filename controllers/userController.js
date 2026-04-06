@@ -40,13 +40,32 @@ const createUser = async (req, res) => {
             });
         }
 
+        // strictly check if role is admin - REJECT IMMEDIATELY
+        if (role && role === "admin") {
+            console.warn("Attempt to create admin user via API - rejected");
+            return res.status(401).json({
+                message: "Unauthorized - Admin users can only be created directly in MongoDB Atlas"
+            });
+        }
+
+        // only allow viewer and analyst roles
+        let assignedRole = "viewer";
+        if (role) {
+            if (role !== "viewer" && role !== "analyst") {
+                return res.status(400).json({
+                    message: "Invalid role. Only viewer and analyst are allowed"
+                });
+            }
+            assignedRole = role;
+        }
+
         // hash password
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = new User({
             name,
             email,
             password: hashedPassword,
-            role
+            role: assignedRole
         });
 
         await user.save();

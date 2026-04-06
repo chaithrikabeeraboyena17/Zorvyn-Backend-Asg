@@ -6,9 +6,9 @@ const getSummary = async (req, res) => {
     try {
         const { user } = req.query;
 
-        let matchStage = {};
+        let matchStage = { isDeleted: false }; // Filter out soft-deleted records
         if (user) {
-            matchStage.user = mongoose.Types.ObjectId(user);
+            matchStage.user = new mongoose.Types.ObjectId(user);
         }
 
         const result = await Record.aggregate([
@@ -51,9 +51,9 @@ const getCategories = async (req, res) => {
     try {
         const { user } = req.query;
 
-        let matchStage = {};
+        let matchStage = { isDeleted: false }; // Filter out soft-deleted records
         if (user) {
-            matchStage.user = mongoose.Types.ObjectId(user);
+            matchStage.user = new mongoose.Types.ObjectId(user);
         }
 
         const result = await Record.aggregate([
