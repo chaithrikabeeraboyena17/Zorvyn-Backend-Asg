@@ -1,0 +1,95 @@
+@jwt_token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5ZDMzODNiNjkxZWZhOWM3YWFlNzE2MyIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc3NTQ1MDE4NSwiZXhwIjoxNzc1NTM2NTg1fQ.veBeEQk1D6nVj39CGgA49dzInx0cX_tvXOkoxj8sp94
+
+### User Routes
+
+# Get all users
+GET http://localhost:5000/api/users
+
+###
+
+# Create a new user
+POST http://localhost:5000/api/users
+Content-Type: application/json
+
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "password": "password123",
+  "role": "admin"
+}
+
+###
+
+# Login user
+POST http://localhost:5000/api/users/login
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "password123"
+}
+
+###
+
+### Record Routes
+
+# Get records (with optional query params)
+GET http://localhost:5000/api/records?page=1&limit=5
+
+###
+
+# Create a record (requires auth)
+POST http://localhost:5000/api/records
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "amount": 1000,
+  "type": "income",
+  "category": "salary",
+  "date": "2024-01-01",
+  "note": "Monthly salary"
+}
+
+###
+
+# Update a record (requires auth - replace RECORD_ID_HERE with actual ID)
+PUT http://localhost:5000/api/records/69d2aed2b6851a0cf011fbc8
+Content-Type: application/json
+Authorization: Bearer {{jwt_token}}
+
+{
+  "amount": 1500,
+  "type": "income",
+  "category": "salary",
+  "note": "Updated salary"
+}
+
+###
+
+# Delete a record (requires auth - replace RECORD_ID_HERE with actual ID)
+DELETE http://localhost:5000/api/records/69d2aed2b6851a0cf011fbc8
+Authorization: Bearer {{jwt_token}}
+
+###
+
+### Dashboard Routes
+
+# Get dashboard summary (requires auth)
+GET http://localhost:5000/api/dashboard/summary
+Authorization: Bearer {{jwt_token}}
+
+###
+
+# Get category-wise totals (requires auth)
+GET http://localhost:5000/api/dashboard/categories
+Authorization: Bearer {{jwt_token}}
+
+###
+
+### Test Route
+
+# Health check
+GET http://localhost:5000/
+
+###

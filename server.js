@@ -1,13 +1,15 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const userRoutes = require("./routes/userRoutes");
 const recordRoutes = require("./routes/recordRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const connectDB = require("./config/db");
 const cors = require("cors");
 require("dotenv").config();
 
 const app = express();
 
+// connect to database
+connectDB();
 
 // middleware
 app.use(express.json());
@@ -20,15 +22,6 @@ app.use("/api/dashboard", dashboardRoutes);
 app.get("/", (req, res) => {
     res.send("Server is running");
 });
-
-// connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
-        console.log("MongoDB Connected ✅");
-    })
-    .catch((err) => {
-        console.log("DB Error:", err);
-    });
 
 // start server
 const PORT = process.env.PORT || 5000;
