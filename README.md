@@ -35,33 +35,38 @@ finance-backend/
 ## Architecture Diagram
 
 ```mermaid
-flowchart TD
-    A[Client Apps<br/>Frontend / Postman / req.http] --> B[Express Server<br/>server.js]
+flowchart LR
+    C[Client]
+    S[Express Server<br/>server.js]
 
-    B --> C[Routes Layer]
-    C --> U[userRoutes<br/>/api/users]
-    C --> R[recordRoutes<br/>/api/records]
-    C --> D[dashboardRoutes<br/>/api/dashboard]
+    subgraph RT [Routes]
+        U[userRoutes]
+        R[recordRoutes]
+        D[dashboardRoutes]
+    end
 
-    U --> UC[userController]
-    R --> AM[authMiddleware]
-    D --> AM
+    subgraph MW [Middleware]
+        A[authMiddleware]
+        RO[roleMiddleware]
+    end
 
-    AM --> RM[roleMiddleware]
-    RM --> RC[recordController]
-    RM --> DC[dashboardController]
-    U --> UC
+    subgraph CT [Controllers]
+        UC[userController]
+        RC[recordController]
+        DC[dashboardController]
+    end
 
-    UC --> UM[User Model]
-    RC --> ReM[Record Model]
-    DC --> ReM
-    RM --> UM
+    subgraph DB [Data]
+        UM[User Model]
+        RM[Record Model]
+        M[(MongoDB)]
+    end
 
-    UM --> MDB[(MongoDB)]
-    ReM --> MDB
-
-    UC -. issues JWT .-> A
-    A -. Bearer Token .-> AM
+    C --> S --> U --> UC --> UM --> M
+    S --> R --> A --> RO --> RC --> RM --> M
+    S --> D --> A --> RO --> DC --> RM --> M
+    UC -. JWT token .-> C
+    C -. Bearer token .-> A
 ```
 
 Brief flow:
@@ -126,310 +131,70 @@ http://localhost:5000
 
 ### Health Route
 
-#### `GET /`
-
-Brief: simple server health check.
-
-Access: public
-
-Response:
-
-- Returns plain text: `Server is running`
+| Method | Endpoint | Access | Description | Response |
+|---|---|---|---|---|
+| `GET` | `/` | Public | Server health check | Plain text: `Server is running` |
 
 ---
 
 ### User Routes
 
-Base path: `/api/users`
+| Method | Endpoint | Access | Description | Success Response |
+|---|---|---|---|---|
+| `GET` | `/api/users` | Public | Fetch all users | `200` with `users` array |
+| `POST` | `/api/users` | Public | Create a new user account | `201` with created `user` |
+| `POST` | `/api/users/login` | Public | Login and receive JWT token | `200` with `token` |
 
-#### `GET /api/users`
+**Request body details**
 
-Brief: fetches all users from the database.
-
-Access: public
-
-Request body: none
-
-Query params: none
-
-Response:
-
-- `200 OK`
-- Returns `message` and a `users` array
-
-Notes:
-
-- This route currently has no authentication middleware.
-- Returned user documents include stored fields from the model.
-
-#### `POST /api/users`
-
-Brief: creates a new user account.
-
-Access: public
-
-Request body:
-
-```json
-{
-  "name": "John Doe",
-  "email": "john@example.com",
-  "password": "password123",
-  "role": "admin"
-}
-```
-
-Required fields:
-
-- `name`
-- `email`
-- `password`
-
-Optional fields:
-
-- `role` (`viewer`, `analyst`, or `admin`)
-
-Behavior:
-
-- Checks for missing required fields
-- Rejects duplicate emails
-- Hashes the password before saving
-- Creates the user with default `status: active` when not supplied
-
-Response:
-
-- `201 Created` with `message` and created `user`
-- `400 Bad Request` if required fields are missing or email already exists
-
-#### `POST /api/users/login`
-
-Brief: authenticates a user and returns a JWT token.
-
-Access: public
-
-Request body:
-
-```json
-{
-  "email": "john@example.com",
-  "password": "password123"
-}
-```
-
-Behavior:
-
-- Finds the user by email
-- Compares the provided password with the hashed password
-- Generates a JWT token valid for `1d`
-
-Response:
-
-- `200 OK` with `message` and `token`
-- `400 Bad Request` for invalid credentials
+| Endpoint | Required Fields | Optional Fields | Notes |
+|---|---|---|---|
+| `POST /api/users` | `name`, `email`, `password` | `role` | Password is hashed before save; duplicate emails return `400` |
+| `POST /api/users/login` | `email`, `password` | None | Returns JWT valid for `1d`; invalid credentials return `400` |
 
 ---
 
 ### Record Routes
 
-Base path: `/api/records`
+| Method | Endpoint | Access | Role | Description | Success Response |
+|---|---|---|---|---|---|
+| `GET` | `/api/records` | Public | None | List records with filters and pagination | `200` with `records`, `page`, `limit` |
+| `POST` | `/api/records` | Bearer Token | `admin` | Create a finance record for the authenticated user | `201` with created `record` |
+| `PUT` | `/api/records/:id` | Bearer Token | `admin` | Update an existing record | `200` with updated `record` |
+| `DELETE` | `/api/records/:id` | Bearer Token | `admin` | Soft-delete a record by setting `isDeleted=true` | `200` with success `message` |
 
-#### `GET /api/records`
+**Query parameters for `GET /api/records`**
 
-Brief: returns finance records with optional filtering and pagination.
+| Param | Type | Default | Description |
+|---|---|---|---|
+| `user` | string | None | Filter by user id |
+| `type` | string | None | Filter by `income` or `expense` |
+| `category` | string | None | Filter by category |
+| `page` | number | `1` | Pagination page number |
+| `limit` | number | `5` | Records per page |
 
-Access: public
+**Request body details**
 
-Query params:
-
-- `user`: filter by user id
-- `type`: filter by `income` or `expense`
-- `category`: filter by category name
-- `page`: page number, default `1`
-- `limit`: number of records per page, default `5`
-
-Behavior:
-
-- Only returns records where `isDeleted` is `false`
-- Populates the `user` field with `name` and `email`
-- Applies pagination using `skip` and `limit`
-
-Response:
-
-- `200 OK` with `message`, `page`, `limit`, and `records`
-
-Example:
-
-```http
-GET /api/records?page=1&limit=5&type=income
-```
-
-#### `POST /api/records`
-
-Brief: creates a new finance record for the authenticated user.
-
-Access: protected, `admin` only
-
-Headers:
-
-```http
-Authorization: Bearer <jwt_token>
-```
-
-Request body:
-
-```json
-{
-  "amount": 1000,
-  "type": "income",
-  "category": "salary",
-  "date": "2024-01-01",
-  "note": "Monthly salary"
-}
-```
-
-Required fields:
-
-- `amount`
-- `type`
-- `category`
-
-Optional fields:
-
-- `date`
-- `note`
-
-Behavior:
-
-- Uses `req.user.id` from the token as the record owner
-- Saves the record with `isDeleted: false` by default
-
-Response:
-
-- `201 Created` with `message` and created `record`
-- `400 Bad Request` if required fields are missing
-- `401 Unauthorized` if token is missing or invalid
-- `403 Forbidden` if the authenticated user is not an admin
-
-#### `PUT /api/records/:id`
-
-Brief: updates an existing record by record id.
-
-Access: protected, `admin` only
-
-Headers:
-
-```http
-Authorization: Bearer <jwt_token>
-```
-
-Path params:
-
-- `id`: MongoDB record id
-
-Request body:
-
-- Any record fields to update, such as `amount`, `type`, `category`, `date`, or `note`
-
-Behavior:
-
-- Updates the matching record and returns the new version
-
-Response:
-
-- `200 OK` with `message` and updated `record`
-- `404 Not Found` if the record does not exist
-- `401 Unauthorized` if token is missing or invalid
-- `403 Forbidden` if the authenticated user is not an admin
-
-#### `DELETE /api/records/:id`
-
-Brief: soft deletes a record by setting `isDeleted` to `true`.
-
-Access: protected, `admin` only
-
-Headers:
-
-```http
-Authorization: Bearer <jwt_token>
-```
-
-Path params:
-
-- `id`: MongoDB record id
-
-Behavior:
-
-- Does not remove the document permanently
-- Marks the record as deleted so it is hidden from the list route
-
-Response:
-
-- `200 OK` with `message`
-- `404 Not Found` if the record does not exist
-- `401 Unauthorized` if token is missing or invalid
-- `403 Forbidden` if the authenticated user is not an admin
+| Endpoint | Required Fields | Optional Fields | Notes |
+|---|---|---|---|
+| `POST /api/records` | `amount`, `type`, `category` | `date`, `note` | Uses `req.user.id` as the record owner |
+| `PUT /api/records/:id` | None | Any updatable record field | Returns `404` if record is not found |
 
 ---
 
 ### Dashboard Routes
 
-Base path: `/api/dashboard`
+| Method | Endpoint | Access | Role | Description | Success Response |
+|---|---|---|---|---|---|
+| `GET` | `/api/dashboard/summary` | Bearer Token | `admin`, `analyst` | Get total income, expense, and balance | `200` with `income`, `expense`, `balance` |
+| `GET` | `/api/dashboard/categories` | Bearer Token | `admin`, `analyst` | Get category-wise totals | `200` with `categories` array |
 
-#### `GET /api/dashboard/summary`
+**Query parameters**
 
-Brief: returns income, expense, and balance totals for records.
-
-Access: protected, `admin` and `analyst`
-
-Headers:
-
-```http
-Authorization: Bearer <jwt_token>
-```
-
-Query params:
-
-- `user`: optional user id to restrict the summary to one user's records
-
-Behavior:
-
-- Aggregates records by `type`
-- Computes total `income`
-- Computes total `expense`
-- Computes `balance = income - expense`
-
-Response:
-
-- `200 OK` with `message`, `income`, `expense`, and `balance`
-- `401 Unauthorized` if token is missing or invalid
-- `403 Forbidden` if the authenticated user is not `admin` or `analyst`
-
-#### `GET /api/dashboard/categories`
-
-Brief: returns category-wise aggregated totals across records.
-
-Access: protected, `admin` and `analyst`
-
-Headers:
-
-```http
-Authorization: Bearer <jwt_token>
-```
-
-Query params:
-
-- `user`: optional user id to restrict aggregation to one user's records
-
-Behavior:
-
-- Aggregates records by `category`
-- Returns total amount for each category
-
-Response:
-
-- `200 OK` with `message` and `categories`
-- `401 Unauthorized` if token is missing or invalid
-- `403 Forbidden` if the authenticated user is not `admin` or `analyst`
+| Endpoint | Param | Type | Description |
+|---|---|---|---|
+| `/api/dashboard/summary` | `user` | string | Optional user id filter |
+| `/api/dashboard/categories` | `user` | string | Optional user id filter |
 
 ---
 
